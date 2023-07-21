@@ -4,6 +4,7 @@ import zipfile
 import mimesis
 import logging
 import time
+import os
 
 
 class Generator:
@@ -281,6 +282,37 @@ class Archiver:
 
         return ARCHIVE_TYPE
 
+    def split_archive(self, ARCHIVE_TYPE, MAXIMUM_FILE_SIZE):
+        """Метод для разделения архива в случае, если превышен максимальный
+        размер архива, заданный пользователем."""
+        logging.info('Method split_archive() initialized..')
+        file_parts_added = []
+        if os.path.getsize('output' + ARCHIVE_TYPE) > MAXIMUM_FILE_SIZE*1024:
+            logging.info(f'Archive size: "{os.path.getsize("output" + ARCHIVE_TYPE)}" is more than MAXIMUM_FILE_SIZE: "{MAXIMUM_FILE_SIZE*1024}", starting to split..')
+            outfile = 'output' + ARCHIVE_TYPE
+            packet_size = int(MAXIMUM_FILE_SIZE * 1024)
+            with open(outfile, 'rb') as output:
+                filecount = 0
+                while True:
+                    data = output.read(packet_size)
+                    if not data:
+                        break
+                    with open("{}{:03}".format('output' + ARCHIVE_TYPE, filecount), 'wb') as packet:
+                        packet.write(data)
+                    file_parts_added.append("{}{:03}".format('output' + ARCHIVE_TYPE, filecount))
+                    logging.info(f'Created file {"{}{:03}".format("output" + ARCHIVE_TYPE, filecount)}')
+                    filecount += 1
+            packet.close()
+            output.close()
+            os.remove('output' + ARCHIVE_TYPE)
+            with zipfile.ZipFile('final_output' + ARCHIVE_TYPE, 'w') as zip_create:
+                logging.info('Starting archiving file parts..')
+                for file_part in file_parts_added:
+                    zip_create.write(file_part)
+                    logging.info(f'Added "{file_part}" to archive!')
+                    os.remove(file_part)
+            zip_create.close()
+
     def make_archive(self, FILES_TO_ARCHIVE: list, ARCHIVE_TYPE: str, MAXIMUM_FILE_SIZE: int = 4194304):
         """Метод, создающий архив из полученных файлов. Принимает на вход
         список из названий сохраняемых файлов - «FILES_TO_ARCHIVE»,
@@ -288,19 +320,20 @@ class Archiver:
         (или его части) - «MAXIMUM_FILE_SIZE». """
         logging.info(f'Method make_archive() started with ARCHIVE_TYPE: "{ARCHIVE_TYPE}"..')
 
-        archive_creator = zipfile.ZipFile(f'output{ARCHIVE_TYPE}', 'w')
-        for file in FILES_TO_ARCHIVE:
-            try:
-                logging.info(f'Trying to archive file {file} to {ARCHIVE_TYPE} file; MAXIMUM_FILE_SIZE is "{MAXIMUM_FILE_SIZE}"')
-                archive_creator.write(f'{file}', compress_type=zipfile.ZIP_DEFLATED)
-                print(f'File "{file}" added to archive..')
-                logging.info(f'File "{file}" successfully archived!')
-            except FileNotFoundError:
-                logging.exception(f'File not found: "{file}", raising FileNotFoundError.')
-                raise FileNotFoundError(f"File {file} not found.")
-        # self.split_archive(ARCHIVE_TYPE, MAXIMUM_FILE_SIZE)
+        with zipfile.ZipFile(f'output{ARCHIVE_TYPE}', 'w') as zip_create:
+            for file in FILES_TO_ARCHIVE:
+                try:
+                    logging.info(f'Trying to archive file {file} to {ARCHIVE_TYPE} file; MAXIMUM_FILE_SIZE is "{MAXIMUM_FILE_SIZE}"')
+                    zip_create.write(f'{file}', compress_type=zipfile.ZIP_DEFLATED)
+                    print(f'File "{file}" added to archive..')
+                    logging.info(f'File "{file}" successfully archived!')
+                except FileNotFoundError:
+                    logging.exception(f'File not found: "{file}", raising FileNotFoundError.')
+                    raise FileNotFoundError(f"File {file} not found.")
         print('Files archived successfully!')
         logging.info(f'Files {FILES_TO_ARCHIVE} archived successfully!')
+        zip_create.close()
+        ARCH.split_archive(ARCHIVE_TYPE, MAXIMUM_FILE_SIZE)
 
 
 def main():
@@ -339,6 +372,3 @@ if __name__ == '__main__':
                         filemode='w', force=True,
                         format='%(asctime)s %(levelname)s %(message)s')
     main()
-
-
-# TODO: разделение архивов на размеры
