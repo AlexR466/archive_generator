@@ -24,6 +24,9 @@ class Generator:
         self.df1: dict = {}
         self.df2: dict = {}
 
+# <<<Константу COLS_COUNT можно не указывать, т.к. данная константа
+# все равно используется в аргументах при объявлении функций>>>
+
     def get_input_data(self):
         """Собирает входные данные для передачи в методы generate()
         и save_to_file(): 1. ROWS_COUNT - количество строк для генерации.
@@ -83,6 +86,9 @@ class Generator:
         """Генерирует ФИО людей. Получает на вход ROWS_COUNT (количество строк)
         из метода input_data. Количество столбцов задано константой COLS_COUNT
         и равно 12 при стандартном значении."""
+
+# <<<Можно сразу задать стандартное значение 12.>>>
+
         logging.info('Method input_data() initialized.'
                      f'ROWS_COUNT value is: "{ROWS_COUNT}"')
         person = mimesis.Person('ru')  # Локаль для создания ФИО. Пример: ru/en
@@ -94,7 +100,7 @@ class Generator:
                      f'{ROWS_COUNT} rows =>'
                      f' {ROWS_COUNT*self.COLS_COUNT} fake names..')
         start_time = time.perf_counter()
-
+# <<<Круто, что добавил время>>>
         if ROWS_COUNT > self.EXCEL_ROWS_LIMIT:
             for col in range(self.COLS_COUNT):
                 names = [person.full_name() for row
@@ -129,6 +135,8 @@ class Generator:
 
         if FILE_TYPE == '.xlsx':
             if ROWS_COUNT > self.EXCEL_ROWS_LIMIT:
+                # <<<Странно, у меня эксель ругался
+                # на 65530 строках на листе>>>
                 data_to_save1 = pd.DataFrame(self.df1)
                 data_to_save2 = pd.DataFrame(self.df2)
                 logging.info('DataFrames created, starting ExcelWriter..')
@@ -136,7 +144,7 @@ class Generator:
                 data_to_save1.to_excel(writer, sheet_name='SheetA',
                                        index=False, header=False)
                 data_to_save2.to_excel(writer, sheet_name='SheetB',
-                                       index=False, header=False)
+                                       index=False, header=False) 
                 writer.close()
                 logging.info('File saved!')
             else:
@@ -189,7 +197,8 @@ class Archiver:
         logging.info('Method __init__() of Archiver initialized..')
         self.MAXIMUM_FILE_SIZE = 4194304  # Максимальный дефолтный размер - 4GB
         self.ALLOWED_ARCHIVE_TYPES: list = ['.zip', '.7z']
-
+# <<<Flake ругается на длинную строку, далее по тексту еще 9 раз>>>
+    
     def ask_about_archiving_existing_files(self):
         """Метод дает выбор пользователю: архивировать существующие файлы
         или создать новый (Y/N). В случае неверного ввода поднимает ошибку."""
@@ -235,6 +244,8 @@ class Archiver:
                          'Raising ValueError..')
             raise ValueError(f'Unknown files_count input: "{files_count}"')
         return FILES_TO_ARCHIVE
+        # <<<при вводе количества файлов не обрабатывается ошибка
+        # ввода букв вместо чисел>>>
 
     def make_new_file_to_archive(self):
         """Метод создает новый файл, в который вносится информация
@@ -331,6 +342,11 @@ class Archiver:
                         break
                     with open("{}{:03}".format('output' + ARCHIVE_TYPE,
                                                filecount), 'wb') as packet:
+                        # <<< Я бы добавил filecount до формата
+                        # т.к. в данном случае номер счетчика указывается
+                        # в формате, что ломает архивный файл
+                        # плюс объявил бы новую переменную FULL_ARCHIVE_NAME,
+                        # определив ей значения, чтобы избежать длинных скобок>>>
                         packet.write(data)
                     file_parts_added.append("{}{:03}".format(
                         'output' + ARCHIVE_TYPE, filecount))
@@ -376,6 +392,9 @@ class Archiver:
         zip_create.close()
         ARCH.split_archive(ARCHIVE_TYPE, MAXIMUM_FILE_SIZE)
 
+        # <<< Я бы добавил имя архива, чтобы файл output не перезаписывался
+        # при неоднократном создании архива одного формата>>>
+        # забыл добавить функцию добавления нового формата архивирования
 
 def main() -> None:
 
@@ -413,3 +432,14 @@ if __name__ == '__main__':
                         filemode='w', force=True,
                         format='%(asctime)s %(levelname)s %(message)s')
     main()
+
+# Хочется отметить проработанный алгоритм взаимодействия с пользователем.
+# Предусмотрены различные ситуации, в том числе интересно применение дефолтного
+# значения для дальнейшей работы программы, в случае ввода неверных данных.
+# Учтены все требования ТЗ (кроме добавления новых форматов файлов и архива).
+# Самое главное, что программа (на мой взгляд) соответствует указанным требованиям.
+# Однако, во время изучения создавалось впечатление, что некоторых функций можно было
+# избежать, чтобы не перегружать восприятие.
+# (например функции ask_about_archive_type, объявив тип данных в аргументе функции создания
+#  архива и выполнив проверку наличия данного типа в теле функции)
+   
